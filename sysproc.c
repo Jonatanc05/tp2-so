@@ -89,3 +89,22 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+int
+sys_date(void)
+{
+  char *ptr;
+  argptr(0, &ptr, sizeof(struct rtcdate*));
+  struct rtcdate* output = (struct rtcdate*)ptr;
+  cmostime(output);
+  return 0;
+}
+
+int sys_virt2real(void)
+{
+  char *va;
+  argptr(0, &va, sizeof(char*));
+  //walkpgdir(myproc()->pgdir, va, 0);
+  return (int) V2P(va);
+}

@@ -207,6 +207,9 @@ consoleintr(int (*getc)(void))
         consputc(BACKSPACE);
       }
       break;
+    case C('X'):
+			exit();
+      break;
     case C('H'): case '\x7f':  // Backspace
       if(input.e != input.w){
         input.e--;

@@ -177,6 +177,23 @@ switchuvm(struct proc *p)
   popcli();
 }
 
+static inline void
+flushtlb()
+{
+    asm volatile(
+        "movl %%cr3, %%eax;"  // Ler CR3
+        "movl %%eax, %%cr3;"  // Escrever de volta
+        :
+        :                     // No input operands
+        : "eax"               // Clobbers EAX
+    );
+}
+
+int
+num_pages() {
+	return (int) (myproc()->sz/(uint)PGSIZE);
+}
+
 // Load the initcode into address 0 of pgdir.
 // sz must be less than a page.
 void
