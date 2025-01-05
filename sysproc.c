@@ -105,7 +105,6 @@ int sys_virt2real(void)
 {
   char *va;
   argptr(0, &va, sizeof(char*));
-  //walkpgdir(myproc()->pgdir, va, 0);
   return (int) V2P(va);
 }
 

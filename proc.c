@@ -224,7 +224,6 @@ fork(void)
 int
 forkcow(void)
 {
-  int i, pid;
   struct proc *old_process = myproc();
   struct proc *new_process = allocproc();
 
@@ -244,7 +243,7 @@ forkcow(void)
   // Clear %eax so that fork returns 0 in the child.
   new_process->tf->eax = 0;
 
-  for(i = 0; i < NOFILE; i++)
+  for(int i = 0; i < NOFILE; i++)
     if(old_process->ofile[i])
       new_process->ofile[i] = filedup(old_process->ofile[i]);
   new_process->cwd = idup(old_process->cwd);
