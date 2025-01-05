@@ -108,3 +108,10 @@ int sys_virt2real(void)
   //walkpgdir(myproc()->pgdir, va, 0);
   return (int) V2P(va);
 }
+
+int
+sys_forkcow(void)
+{
+  return forkcow();
+}
+

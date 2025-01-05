@@ -32,10 +32,45 @@ idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
+extern pte_t * walkpgdir(pde_t *pgdir, const void *va, int alloc);
+extern int refcount[PHYSTOP/PGSIZE];
+
 //PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
 {
+  if(tf->trapno == T_PGFLT){
+    uint va = rcr2();
+    if((tf->err & 0x2) && va < KERNBASE){
+      pte_t *pte = walkpgdir(myproc()->pgdir, (char*)va, 0);
+      if(pte && (*pte & PTE_COW)){
+        // Descobre a moldura física
+        uint pa = PTE_ADDR(*pte);
+        uint idx = pa >> PTXSHIFT;
+
+        if(refcount[idx] > 1){
+          // Aloca nova página
+          char *mem = kalloc();
+          memmove(mem, (char*)P2V(pa), PGSIZE);
+
+          // Decrementa ref da velha
+          refcount[idx]--;
+
+          // Ajusta PTE para a nova página com escrita
+          *pte = V2P(mem) | PTE_P | PTE_U | PTE_W;
+
+        } else {
+          // refcount == 1 -> pode escrever diretamente
+          *pte &= ~PTE_COW;
+          *pte |= PTE_W;
+        }
+        flushtlb();
+        return;
+      }
+    }
+		panic("trap");
+  }
+
   if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
       exit();

@@ -221,6 +221,45 @@ fork(void)
   return pid;
 }
 
+int
+forkcow(void)
+{
+  int i, pid;
+  struct proc *old_process = myproc();
+  struct proc *new_process = allocproc();
+
+  if(new_process == 0)
+    return -1;
+
+  // Copia espaço de endereçamento
+  if((new_process->pgdir = copyuvmcow(old_process->pgdir, old_process->sz)) == 0){
+    return -1;
+  }
+
+  new_process->sz = old_process->sz;
+  new_process->parent = old_process;
+  *new_process->tf = *old_process->tf;
+  new_process->parent = old_process;
+
+  // Clear %eax so that fork returns 0 in the child.
+  new_process->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++)
+    if(old_process->ofile[i])
+      new_process->ofile[i] = filedup(old_process->ofile[i]);
+  new_process->cwd = idup(old_process->cwd);
+
+  safestrcpy(new_process->name, old_process->name, sizeof(old_process->name));
+
+  acquire(&ptable.lock);
+
+  new_process->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  return new_process->pid;
+}
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.

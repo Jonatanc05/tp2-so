@@ -9,6 +9,7 @@
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
+int refcount[PHYSTOP/PGSIZE];
 
 // Set up CPU's kernel segment descriptors.
 // Run once on entry on each CPU.
@@ -32,7 +33,8 @@ seginit(void)
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
-static pte_t *
+//static
+pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
@@ -177,7 +179,7 @@ switchuvm(struct proc *p)
   popcli();
 }
 
-static inline void
+inline void
 flushtlb()
 {
     asm volatile(
@@ -359,6 +361,38 @@ copyuvm(pde_t *pgdir, uint sz)
 bad:
   freevm(d);
   return 0;
+}
+
+pde_t*
+copyuvmcow(pde_t *existing_proc_dir, uint adress_space_size)
+{
+  pde_t *new_proc_dir;
+  new_proc_dir = setupkvm();
+  if(new_proc_dir == 0)
+    return 0;
+
+  for(uint i = 0; i < adress_space_size; i += PGSIZE){
+    pte_t *existing_pte = walkpgdir(existing_proc_dir, (char*)i, 0);
+    if(!existing_pte)
+      continue;
+    if(!(*existing_pte & PTE_P))
+      continue;
+
+    // Remover bit de escrita, setar PTE_COW
+    *existing_pte &= ~PTE_W;
+    *existing_pte |= PTE_COW;
+
+    // Incrementar contador de referência
+    uint pa = PTE_ADDR(*existing_pte);
+    uint idx = pa >> PTXSHIFT;
+    refcount[idx]++;
+
+    // Mapear na tabela do filho
+    if(mappages(new_proc_dir, (void*)i, PGSIZE, pa, PTE_FLAGS(*existing_pte)) < 0){
+		panic("copyuvmcow");
+    }
+  }
+  return new_proc_dir;
 }
 
 //PAGEBREAK!
