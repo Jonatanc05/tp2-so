@@ -101,11 +101,13 @@ sys_date(void)
   return 0;
 }
 
+extern pte_t* walkpgdir(pde_t* dir, const void* va, int alloc);
 int sys_virt2real(void)
 {
   char *va;
   argptr(0, &va, sizeof(char*));
-  return (int) V2P(va);
+  pte_t* pte = walkpgdir(myproc()->pgdir, va, 0);
+  return PTE_ADDR(*pte) | ((uint)va & 0xFFF);
 }
 
 int
@@ -114,3 +116,13 @@ sys_forkcow(void)
   return forkcow();
 }
 
+extern int num_pages();
+int sys_num_pages(void)
+{
+  return num_pages();
+}
+
+int sys_corretor(void)
+{
+  return 0;
+}

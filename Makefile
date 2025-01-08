@@ -27,7 +27,6 @@ OBJS = \
 	uart.o\
 	vectors.o\
 	vm.o\
-	corretor.o\
 
 # Cross-compiling (e.g., on Mac OS X)
 # TOOLPREFIX = i386-jos-elf
@@ -170,6 +169,7 @@ UPROGS=\
 	_cat\
 	_date\
 	_virt2real\
+	_corretor\
 	_echo\
 	_forktest\
 	_grep\

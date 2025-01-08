@@ -62,20 +62,20 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 static int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
-  char *a, *last;
+  char *curr_vpage, *last_vpage;
   pte_t *pte;
 
-  a = (char*)PGROUNDDOWN((uint)va);
-  last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
+  curr_vpage = (char*)PGROUNDDOWN((uint)va);
+  last_vpage = (char*)PGROUNDDOWN(((uint)va) + size - 1);
   for(;;){
-    if((pte = walkpgdir(pgdir, a, 1)) == 0)
+    if((pte = walkpgdir(pgdir, curr_vpage, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
       panic("remap");
     *pte = pa | perm | PTE_P;
-    if(a == last)
+    if(curr_vpage == last_vpage)
       break;
-    a += PGSIZE;
+    curr_vpage += PGSIZE;
     pa += PGSIZE;
   }
   return 0;
@@ -183,11 +183,11 @@ inline void
 flushtlb()
 {
     asm volatile(
-        "movl %%cr3, %%eax;"  // Ler CR3
-        "movl %%eax, %%cr3;"  // Escrever de volta
+        "movl %%cr3, %%ebx;"  // Ler CR3
+        "movl %%ebx, %%cr3;"  // Escrever de volta
         :
         :                     // No input operands
-        : "eax"               // Clobbers EAX
+        : "ebx"               // Clobbers EAX
     );
 }
 
@@ -332,17 +332,17 @@ clearpteu(pde_t *pgdir, char *uva)
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz)
+copyuvm(pde_t *existing_proc_pgdir, uint adress_space_size)
 {
-  pde_t *d;
+  pde_t *new_proc_pgdir;
   pte_t *pte;
   uint pa, i, flags;
   char *mem;
 
-  if((d = setupkvm()) == 0)
+  if((new_proc_pgdir = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+  for(i = 0; i < adress_space_size; i += PGSIZE){
+    if((pte = walkpgdir(existing_proc_pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
@@ -351,36 +351,39 @@ copyuvm(pde_t *pgdir, uint sz)
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)P2V(pa), PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
+    if(mappages(new_proc_pgdir, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
       kfree(mem);
       goto bad;
     }
   }
-  return d;
+  return new_proc_pgdir;
 
 bad:
-  freevm(d);
+  freevm(new_proc_pgdir);
   return 0;
 }
 
 pde_t*
-copyuvmcow(pde_t *existing_proc_dir, uint adress_space_size)
+copyuvmcow(pde_t *existing_proc_pgdir, uint adress_space_size)
 {
-  pde_t *new_proc_dir;
-  new_proc_dir = setupkvm();
-  if(new_proc_dir == 0)
+  pde_t *new_proc_pgdir;
+  new_proc_pgdir = setupkvm();
+  if(new_proc_pgdir == 0)
     return 0;
 
   for(uint i = 0; i < adress_space_size; i += PGSIZE){
-    pte_t *existing_pte = walkpgdir(existing_proc_dir, (char*)i, 0);
+    pte_t *existing_pte = walkpgdir(existing_proc_pgdir, (char*)i, 0);
     if(!existing_pte)
-      continue;
+      panic("DEBUG");//continue;
     if(!(*existing_pte & PTE_P))
-      continue;
+      panic("DEBUG");//continue;
 
     // Remover bit de escrita, setar PTE_COW
-    *existing_pte &= ~PTE_W;
-    *existing_pte |= PTE_COW;
+    //*existing_pte &= ~PTE_W;
+    //*existing_pte |= PTE_COW;
+    uint new_flags = PTE_FLAGS(*existing_pte);
+    new_flags &= ~PTE_W;
+    new_flags |= PTE_COW;
 
     // Incrementar contador de referência
     uint pa = PTE_ADDR(*existing_pte);
@@ -388,11 +391,12 @@ copyuvmcow(pde_t *existing_proc_dir, uint adress_space_size)
     refcount[idx]++;
 
     // Mapear na tabela do filho
-    if(mappages(new_proc_dir, (void*)i, PGSIZE, pa, PTE_FLAGS(*existing_pte)) < 0){
-		panic("copyuvmcow");
+    if(mappages(new_proc_pgdir, (void*)i, PGSIZE, pa, new_flags) < 0){
+      panic("copyuvmcow");
     }
   }
-  return new_proc_dir;
+  // line 29
+  return new_proc_pgdir;
 }
 
 //PAGEBREAK!

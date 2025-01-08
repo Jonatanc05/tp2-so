@@ -106,6 +106,8 @@ extern int sys_uptime(void);
 extern int sys_date(void);
 extern int sys_virt2real(void);
 extern int sys_forkcow(void);
+extern int sys_num_pages(void);
+extern int sys_corretor(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -132,6 +134,8 @@ static int (*syscalls[])(void) = {
 [SYS_date]    sys_date,
 [SYS_virt2real]    sys_virt2real,
 [SYS_forkcow] sys_forkcow,
+[SYS_num_pages]    sys_num_pages,
+[SYS_corretor]     sys_corretor,
 };
 
 void

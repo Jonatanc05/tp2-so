@@ -99,7 +99,7 @@ found:
   sp = p->kstack + KSTACKSIZE;
 
   // Leave room for trap frame.
-  sp -= sizeof *p->tf;
+  sp -= sizeof(struct trapframe);
   p->tf = (struct trapframe*)sp;
 
   // Set up new context to start executing at forkret,
@@ -232,13 +232,15 @@ forkcow(void)
 
   // Copia espaço de endereçamento
   if((new_process->pgdir = copyuvmcow(old_process->pgdir, old_process->sz)) == 0){
+    kfree(new_process->kstack);
+    new_process->kstack = 0;
+    new_process->state = UNUSED;
     return -1;
   }
 
   new_process->sz = old_process->sz;
   new_process->parent = old_process;
   *new_process->tf = *old_process->tf;
-  new_process->parent = old_process;
 
   // Clear %eax so that fork returns 0 in the child.
   new_process->tf->eax = 0;
@@ -371,8 +373,12 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      //if (p->pid != 0 && p->pid != 1 && p->pid != 2)
+        //cprintf("[SCHED] checking %s (pid %d), state=%d\n", p->name, p->pid, p->state);
       if(p->state != RUNNABLE)
         continue;
+
+      //cprintf("swtching to %d\n", p->pid);
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -380,6 +386,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+
 
       swtch(&(c->scheduler), p->context);
       switchkvm();

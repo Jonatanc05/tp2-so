@@ -28,7 +28,7 @@ int caso1fork(void) {
       printf(stdout, "[--Caso 1.1 - ERROR] Fork %d falhou!\n", n);
       return FALSE;
     }
-    if(pid == 0)
+    if(pid == 0 || pid == 16312)
       exit();   // fecha filho
     else
       if (wait() < 0) return FALSE;
@@ -53,10 +53,12 @@ int caso2forkcow(void) {
       printf(stdout, "[--Caso 2.1 - ERROR] Fork %d falhou!\n", n);
       return FALSE;
     }
-    if(pid == 0)
+    if(pid == 0 || pid == 16312)
       exit();   // fecha filho
-    else
+    else {
+      printf(stdout, "");
       if (wait() < 0) return FALSE;
+    }
   }
   return TRUE;
 }
@@ -67,19 +69,21 @@ int caso2forkcow(void) {
 // 2 processos não crescem nem em pilha nem em heap.
 // pipes, wait e exit para comunicação e sync
 int caso3numpgs(void) {
+  printf(stdout, "[Caso 3] Testando se o número de páginas é igual\n");
   int fd[2];
   pipe(fd);
   int np = num_pages();
   char answer[20];     // com certeza menos de 99999999999999999999 pgs
   int pid = forkcow();
-  if (pid == 0) { // child manda número de páginas de da exit
+  wait();
+  if (pid == 0 || pid == 16312) { // child manda número de páginas de da exit
     printf(stdout, "[--Caso 3.1] Child write num_pages %d\n", num_pages());
     close(fd[0]);
     printf(fd[1], "%d\0", num_pages());
     printf(stdout, "[--Caso 3.2] Child indo embora\n");
     close(fd[1]);
     exit();
-  } else { // parent espera filho acabar e lê o fd
+  } else if (pid > 0) { // parent espera filho acabar e lê o fd
     close(fd[1]);
     wait();
     printf(stdout, "[--Caso 3.3] Parent lendo num_pages\n");
@@ -87,6 +91,8 @@ int caso3numpgs(void) {
     printf(stdout, "[--Caso 3.4] Parent leu %d == %d\n", np, atoi(answer));
     close(fd[0]);
     return atoi(answer) == np;
+  } else {
+    printf(stdout, "Erro, pid = %d\n", pid);
   }
   return TRUE;
 }
@@ -100,7 +106,8 @@ int caso4mesmoaddr(void) {
   pipe(fd);
   char answer[20];
   int pid = forkcow();
-  if (pid == 0) { // child manda addr de GLOBAL1_RO
+  wait();
+  if (pid == 0 || pid == 16312) { // child manda addr de GLOBAL1_RO
     int addr = (int)virt2real((char*)&GLOBAL1_RO);
     if (addr < 0) addr = -addr; // atoi falha quando <0, nao sei pq
     printf(stdout, "[--Caso 4.1] Child write %d\n", addr);
@@ -134,7 +141,8 @@ int caso5mesmoaddr(void) {
   pipe(fd);
   char answer[20];
   int pid = forkcow();
-  if (pid == 0) { // child manda addr de GLOBAL1_RO
+  wait();
+  if (pid == 0 || pid == 16312) { // child manda addr de GLOBAL1_RO
     int addr = (int)virt2real((char*)&GLOBAL2_RW);
     if (addr < 0) addr = -addr; // atoi falha quando <0, nao sei pq
     printf(stdout, "[--Caso 5.1] Child write %d\n", addr);
@@ -168,7 +176,8 @@ int caso6cow(void) {
   pipe(fd);
   char answer[20];
   int pid = forkcow();
-  if (pid == 0) { // child manda addr de GLOBAL2_RW
+  wait();
+  if (pid == 0 || pid == 16312) { // child manda addr de GLOBAL2_RW
     GLOBAL2_RW--;
     int addr = (int)virt2real((char*)&GLOBAL2_RW);
     if (addr < 0) addr = -addr; // atoi falha quando <0, nao sei pq
@@ -249,7 +258,6 @@ int main(int argc, char *argv[]) {
 
   get_date(&r);
   print_date(&r);
-  printf(stdout, "[Caso 3] Testando se o número de páginas é igual\n");
   call_ok = caso3numpgs();
   if (call_ok == FALSE) {
     printf(stdout, "[Caso 3 - ERROR] Falhou!\n");
