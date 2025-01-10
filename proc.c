@@ -244,6 +244,7 @@ forkcow(void)
 
   // Clear %eax so that fork returns 0 in the child.
   new_process->tf->eax = 0;
+  new_process->tf->ebx = 0;
 
   for(int i = 0; i < NOFILE; i++)
     if(old_process->ofile[i])
@@ -386,13 +387,11 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
-
       swtch(&(c->scheduler), p->context);
-      switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
+      switchkvm();
       c->proc = 0;
     }
     release(&ptable.lock);

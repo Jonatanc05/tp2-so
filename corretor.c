@@ -28,7 +28,7 @@ int caso1fork(void) {
       printf(stdout, "[--Caso 1.1 - ERROR] Fork %d falhou!\n", n);
       return FALSE;
     }
-    if(pid == 0 || pid == 16312)
+    if(pid == 0)
       exit();   // fecha filho
     else
       if (wait() < 0) return FALSE;
@@ -53,7 +53,7 @@ int caso2forkcow(void) {
       printf(stdout, "[--Caso 2.1 - ERROR] Fork %d falhou!\n", n);
       return FALSE;
     }
-    if(pid == 0 || pid == 16312)
+    if(pid == 0)
       exit();   // fecha filho
     else {
       printf(stdout, "");
@@ -76,7 +76,7 @@ int caso3numpgs(void) {
   char answer[20];     // com certeza menos de 99999999999999999999 pgs
   int pid = forkcow();
   wait();
-  if (pid == 0 || pid == 16312) { // child manda número de páginas de da exit
+  if (pid == 0) { // child manda número de páginas de da exit
     printf(stdout, "[--Caso 3.1] Child write num_pages %d\n", num_pages());
     close(fd[0]);
     printf(fd[1], "%d\0", num_pages());
@@ -107,7 +107,7 @@ int caso4mesmoaddr(void) {
   char answer[20];
   int pid = forkcow();
   wait();
-  if (pid == 0 || pid == 16312) { // child manda addr de GLOBAL1_RO
+  if (pid == 0) { // child manda addr de GLOBAL1_RO
     int addr = (int)virt2real((char*)&GLOBAL1_RO);
     if (addr < 0) addr = -addr; // atoi falha quando <0, nao sei pq
     printf(stdout, "[--Caso 4.1] Child write %d\n", addr);
@@ -142,7 +142,7 @@ int caso5mesmoaddr(void) {
   char answer[20];
   int pid = forkcow();
   wait();
-  if (pid == 0 || pid == 16312) { // child manda addr de GLOBAL1_RO
+  if (pid == 0) { // child manda addr de GLOBAL1_RO
     int addr = (int)virt2real((char*)&GLOBAL2_RW);
     if (addr < 0) addr = -addr; // atoi falha quando <0, nao sei pq
     printf(stdout, "[--Caso 5.1] Child write %d\n", addr);
@@ -177,7 +177,7 @@ int caso6cow(void) {
   char answer[20];
   int pid = forkcow();
   wait();
-  if (pid == 0 || pid == 16312) { // child manda addr de GLOBAL2_RW
+  if (pid == 0) { // child manda addr de GLOBAL2_RW
     GLOBAL2_RW--;
     int addr = (int)virt2real((char*)&GLOBAL2_RW);
     if (addr < 0) addr = -addr; // atoi falha quando <0, nao sei pq
